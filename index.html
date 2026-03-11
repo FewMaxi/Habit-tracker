@@ -1,0 +1,1717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Habit Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f0f13;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .header {
+      padding: 48px 24px 20px;
+    }
+
+    .header h1 { font-size: 28px; font-weight: 700; }
+
+    .header .subtitle {
+      color: #c8ff57;
+      font-size: 18px;
+      font-weight: 600;
+      margin-top: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .header .subtitle-small {
+      color: #555;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .page {
+      display: none;
+      flex: 1;
+      padding: 0 24px 100px;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .page.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── BOTTOM NAV ── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 480px;
+      background: #13131a;
+      border-top: 1px solid #1e1e2e;
+      display: flex;
+      z-index: 100;
+    }
+
+    .nav-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: #444;
+      padding: 14px 0 10px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-family: 'Segoe UI', sans-serif;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+
+    .nav-btn .icon { font-size: 20px; }
+    .nav-btn.active { color: #c8ff57; }
+
+    /* ── PROGRESS ── */
+    .progress-section { margin-bottom: 24px; }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar-bg {
+      background: #1a1a24;
+      border-radius: 99px;
+      height: 6px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: #c8ff57;
+      border-radius: 99px;
+      transition: width 0.4s ease;
+      width: 0%;
+    }
+
+    /* ── ADD HABIT ── */
+    .add-habit-box {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .add-habit-box input {
+      flex: 1;
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: white;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .add-habit-box input:focus { border-color: #c8ff57; }
+    .add-habit-box input::placeholder { color: #444; }
+
+    .add-habit-box button {
+      background: #c8ff57;
+      color: #0f0f13;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .add-habit-box button:hover { transform: scale(1.05); }
+
+    .add-habit-btn {
+      background: #c8ff57;
+      color: #0f0f13;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.1s;
+      width: 100%;
+    }
+
+    .add-habit-btn:hover { transform: scale(1.02); }
+
+    /* ── HABIT SECTIONS ── */
+    .habits-section { margin-bottom: 24px; }
+    .habits-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #555;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #2a2a3a;
+    }
+    .habits-section-title.daily { color: #c8ff57; }
+    .habits-section-title.scheduled { color: #3b82f6; }
+
+    /* ── HABITS ── */
+    .habit {
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .habit.done { border-color: #c8ff57; background: #1a2010; }
+
+    .habit-left { display: flex; align-items: center; gap: 14px; flex: 1; }
+
+    .check-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 2px solid #333;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      transition: all 0.2s;
+      flex-shrink: 0;
+      color: #0f0f13;
+    }
+
+    .habit.done .check-btn { background: #c8ff57; border-color: #c8ff57; }
+
+    .habit-name-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .habit-name { font-size: 15px; font-weight: 500; color: #eee; }
+    .habit.done .habit-name { text-decoration: line-through; color: #555; }
+
+    .habit-schedule {
+      font-size: 11px;
+      color: #666;
+      font-weight: 400;
+      text-transform: capitalize;
+    }
+
+    .habit.done .habit-schedule { color: #444; }
+
+    .habit-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .habit-color-input {
+      width: 36px;
+      height: 36px;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .cal-toggle-btn {
+      background: none;
+      border: 1px solid #2a2a3a;
+      color: #555;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+
+    .cal-toggle-btn:hover { border-color: #c8ff57; color: #c8ff57; }
+
+    .habit.show-in-cal .cal-toggle-btn { border-color: #c8ff57; color: #c8ff57; }
+
+    .schedule-btn {
+      background: none;
+      border: 1px solid #2a2a3a;
+      color: #555;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+
+    .schedule-btn:hover { border-color: #c8ff57; color: #c8ff57; }
+
+    .schedule-btn.customized {
+      border-color: #c8ff57;
+      color: #c8ff57;
+      font-weight: 600;
+    }
+
+    .schedule-btn.customized:hover { transform: scale(1.05); }
+
+    /* Schedule modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal.active { display: flex; }
+
+    .modal-content {
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 14px;
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+
+    .frequency-section { margin-bottom: 20px; }
+    .frequency-label { font-size: 12px; color: #555; margin-bottom: 8px; }
+
+    .frequency-buttons {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .freq-btn {
+      background: #0f0f13;
+      border: 1px solid #2a2a3a;
+      color: #555;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+
+    .freq-btn:hover { border-color: #c8ff57; }
+    .freq-btn.active { background: #c8ff57; color: #0f0f13; border-color: #c8ff57; }
+
+    .days-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .day-btn {
+      background: #0f0f13;
+      border: 1px solid #2a2a3a;
+      color: #555;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .day-btn:hover { border-color: #c8ff57; }
+    .day-btn.selected { background: #c8ff57; color: #0f0f13; border-color: #c8ff57; }
+
+    .modal-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .modal-buttons button {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+
+    .modal-buttons .save-btn {
+      background: #c8ff57;
+      color: #0f0f13;
+      border-color: #c8ff57;
+    }
+
+    .modal-buttons .save-btn:hover { transform: scale(1.02); }
+
+    .modal-buttons .cancel-btn {
+      background: #0f0f13;
+      color: #c8ff57;
+    }
+
+    .modal-buttons .cancel-btn:hover { border-color: #c8ff57; }
+
+    .delete-btn {
+      background: none;
+      border: none;
+      color: #2a2a3a;
+      font-size: 16px;
+      cursor: pointer;
+      transition: color 0.2s;
+      padding: 4px 6px;
+    }
+
+    .delete-btn:hover { color: #ff5555; }
+
+    .empty-state {
+      text-align: center;
+      color: #333;
+      font-size: 14px;
+      padding: 40px 0;
+    }
+
+    /* ── CALENDAR ── */
+    .calendar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .calendar-header h2 { font-size: 18px; font-weight: 600; }
+
+    .cal-nav {
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      color: white;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background 0.2s;
+    }
+
+    .cal-nav:hover { background: #2a2a3a; }
+
+    .weekday-labels {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+
+    .weekday-labels span {
+      text-align: center;
+      font-size: 10px;
+      color: #444;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      padding: 4px 0;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    .cal-day {
+      aspect-ratio: 1;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 500;
+      background: #1a1a24;
+      border: 1px solid #1e1e2e;
+      color: #444;
+      position: relative;
+    }
+
+    .cal-day.current-month { color: #888; }
+    .cal-day.today { border-color: #c8ff57; color: #c8ff57; font-weight: 700; }
+    .cal-day.perfect { background: #1a1a24; border-color: #3a3a1a; color: #777; }
+    .cal-day.perfect.today { background: #1a2f00; border-color: #c8ff57; color: #c8ff57; box-shadow: inset 0 0 10px rgba(200, 255, 87, 0.5); }
+
+    .cal-day.partial { border-color: #3a3a1a; color: #777; }
+    .cal-day.empty-day { background: transparent; border-color: transparent; }
+
+    /* Multi-dot display */
+    .cal-dots-container {
+      position: absolute;
+      bottom: 3px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 2px;
+    }
+
+    .cal-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      border: 1px solid;
+    }
+
+    .cal-legend {
+      display: flex;
+      gap: 20px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #555;
+    }
+
+    .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+    /* ── STATS ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #c8ff57;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-label { font-size: 12px; color: #555; }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #555;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .habit-stat-row {
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+    }
+
+    .habit-stat-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .habit-stat-name { font-size: 14px; font-weight: 500; }
+    .habit-stat-pct  { font-size: 13px; color: #c8ff57; font-weight: 600; }
+
+    .habit-mini-bar-bg {
+      background: #0f0f13;
+      border-radius: 99px;
+      height: 4px;
+      overflow: hidden;
+    }
+
+    .habit-mini-bar-fill {
+      height: 100%;
+      background: #c8ff57;
+      border-radius: 99px;
+      transition: width 0.5s ease;
+    }
+
+    /* ── MANAGE HABITS ── */
+    .manage-info {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 16px;
+    }
+
+    .day-selector-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .day-selector {
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      color: #555;
+      padding: 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .day-selector:hover { border-color: #c8ff57; color: #c8ff57; }
+    .day-selector.active { background: #c8ff57; color: #0f0f13; border-color: #c8ff57; font-weight: 700; }
+
+    .manage-habit-row {
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+    }
+
+    .manage-habit-row.scheduled-active { border-color: #c8ff57; }
+
+    .manage-habit-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .manage-habit-status {
+      color: #c8ff57;
+      font-weight: 600;
+    }
+
+    .manage-habit-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #eee;
+    }
+
+    .manage-habit-type {
+      font-size: 11px;
+      color: #555;
+    }
+
+    .manage-habit-actions {
+      display: flex;
+      gap: 6px;
+      margin-left: 12px;
+    }
+
+    .manage-edit-btn {
+      background: #c8ff57;
+      color: #0f0f13;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .manage-edit-btn:hover { transform: scale(1.05); }
+
+    .manage-delete-btn {
+      background: none;
+      color: #555;
+      border: 1px solid #2a2a3a;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .manage-delete-btn:hover {
+      color: #ff6b6b;
+      border-color: #ff6b6b;
+    }
+
+    /* ── MANAGE TABS ── */
+    .manage-view-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #2a2a3a;
+    }
+
+    .manage-tab {
+      background: none;
+      border: none;
+      color: #555;
+      padding: 12px 16px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .manage-tab:hover { color: #c8ff57; }
+    .manage-tab.active {
+      color: #c8ff57;
+      border-bottom-color: #c8ff57;
+    }
+
+    .manage-view { display: none; }
+    .manage-view.active { display: block; }
+
+    /* ── CREATE HABIT MODAL ── */
+    .create-habit-section {
+      margin-bottom: 20px;
+    }
+
+    .create-habit-section label {
+      display: block;
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .create-habit-section input[type="text"] {
+      width: 100%;
+      background: #0f0f13;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: white;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .create-habit-section input[type="text"]:focus {
+      border-color: #c8ff57;
+    }
+
+    #create-habit-color-input {
+      width: 60px;
+      height: 40px;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <h1 id="page-title">My Habits</h1>
+    <p class="subtitle" id="date-display"></p>
+    <p class="subtitle-small" id="date-display-small"></p>
+  </div>
+
+  <!-- PAGE: TODAY -->
+  <div class="page active" id="page-today">
+    <div class="progress-section">
+      <div class="progress-label">
+        <span>Today's progress</span>
+        <span id="progress-text">0 / 0 done</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-bar"></div>
+      </div>
+    </div>
+    <div class="add-habit-box">
+      <button class="add-habit-btn" onclick="openCreateHabitModal()">+ Add new habit</button>
+    </div>
+    <div id="habit-list">
+      <div class="empty-state">No habits yet. Add one above! ☝️</div>
+    </div>
+  </div>
+
+  <!-- PAGE: CALENDAR -->
+  <div class="page" id="page-calendar">
+    <div class="calendar-header">
+      <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+      <h2 id="cal-month-label"></h2>
+      <button class="cal-nav" onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="weekday-labels">
+      <span>SUN</span><span>MON</span><span>TUE</span>
+      <span>WED</span><span>THU</span><span>FRI</span><span>SAT</span>
+    </div>
+    <div class="calendar-grid" id="calendar-grid"></div>
+    <div class="cal-legend">
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#c8ff57;border:1px solid #c8ff57"></div>
+        <span>Habit completed</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#1a1a24;border:1px solid #3b82f6"></div>
+        <span>Habit tracked</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#1a1a24;border:1px solid #1e1e2e"></div>
+        <span>No data</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: MANAGE HABITS -->
+  <div class="page" id="page-manage">
+    <div class="manage-view-tabs">
+      <button class="manage-tab active" onclick="switchManageView('all')">All Habits</button>
+      <button class="manage-tab" onclick="switchManageView('by-day')">By Day of Week</button>
+    </div>
+
+    <!-- ALL HABITS VIEW -->
+    <div id="manage-all-view" class="manage-view active">
+      <div id="all-habits-list">
+        <div class="empty-state">No habits yet. Create one in the Today tab!</div>
+      </div>
+    </div>
+
+    <!-- BY DAY VIEW -->
+    <div id="manage-by-day-view" class="manage-view">
+      <div class="manage-info">Select a day to manage its habits:</div>
+      <div class="day-selector-grid">
+        <button class="day-selector" onclick="manageDayHabits(0)">Sunday</button>
+        <button class="day-selector" onclick="manageDayHabits(1)">Monday</button>
+        <button class="day-selector" onclick="manageDayHabits(2)">Tuesday</button>
+        <button class="day-selector" onclick="manageDayHabits(3)">Wednesday</button>
+        <button class="day-selector" onclick="manageDayHabits(4)">Thursday</button>
+        <button class="day-selector" onclick="manageDayHabits(5)">Friday</button>
+        <button class="day-selector" onclick="manageDayHabits(6)">Saturday</button>
+      </div>
+      <div id="managed-habits-list" style="margin-top: 24px;">
+        <div class="empty-state">Select a day above</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: STATS -->
+  <div class="page" id="page-stats">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-label">Total Habits</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-done">0</div>
+        <div class="stat-label">Done Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-streak">0🔥</div>
+        <div class="stat-label">Day Streak</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-perfect">0</div>
+        <div class="stat-label">Perfect Days</div>
+      </div>
+    </div>
+    <div class="section-title">Habit Completion</div>
+    <div id="habit-stats-list">
+      <div class="empty-state">Add habits to see stats!</div>
+    </div>
+  </div>
+
+  <!-- SCHEDULE MODAL -->
+  <div class="modal" id="schedule-modal">
+    <div class="modal-content">
+      <div class="modal-title" id="schedule-modal-title">Configure Schedule</div>
+      
+      <div class="frequency-section" id="days-section">
+        <div class="frequency-label">Select Days</div>
+        <div class="days-grid">
+          <button class="day-btn" onclick="toggleDay(0, event)">Sun</button>
+          <button class="day-btn" onclick="toggleDay(1, event)">Mon</button>
+          <button class="day-btn" onclick="toggleDay(2, event)">Tue</button>
+          <button class="day-btn" onclick="toggleDay(3, event)">Wed</button>
+          <button class="day-btn" onclick="toggleDay(4, event)">Thu</button>
+          <button class="day-btn" onclick="toggleDay(5, event)">Fri</button>
+          <button class="day-btn" onclick="toggleDay(6, event)">Sat</button>
+        </div>
+      </div>
+
+      <div class="modal-buttons">
+        <button class="save-btn" onclick="saveSchedule()">Save</button>
+        <button class="cancel-btn" onclick="closeScheduleModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE HABIT MODAL -->
+  <div class="modal" id="create-habit-modal">
+    <div class="modal-content">
+      <div class="modal-title">Create New Habit</div>
+      
+      <div class="create-habit-section">
+        <label>Habit Name</label>
+        <input type="text" id="create-habit-name-input" placeholder="Enter habit name..." />
+      </div>
+
+      <div class="create-habit-section">
+        <label>Frequency</label>
+        <div class="frequency-buttons">
+          <button class="freq-btn active" onclick="setCreateFrequency('once', event)">Today)</button>
+          <button class="freq-btn" onclick="setCreateFrequency('specific', event)">Specific Days</button>
+        </div>
+      </div>
+
+      <div class="create-habit-section" id="create-days-section" style="display: none;">
+        <label>Select Days</label>
+        <div class="days-grid">
+          <button class="day-btn" onclick="toggleCreateDay(0, event)">Sun</button>
+          <button class="day-btn" onclick="toggleCreateDay(1, event)">Mon</button>
+          <button class="day-btn" onclick="toggleCreateDay(2, event)">Tue</button>
+          <button class="day-btn" onclick="toggleCreateDay(3, event)">Wed</button>
+          <button class="day-btn" onclick="toggleCreateDay(4, event)">Thu</button>
+          <button class="day-btn" onclick="toggleCreateDay(5, event)">Fri</button>
+          <button class="day-btn" onclick="toggleCreateDay(6, event)">Sat</button>
+        </div>
+      </div>
+
+      <div class="create-habit-section">
+        <label>Color</label>
+        <input type="color" id="create-habit-color-input" value="#3b82f6" onchange="updateCreateHabitColor(this.value)" />
+      </div>
+
+      <div class="modal-buttons">
+        <button class="save-btn" onclick="createHabitFromModal()">Create Habit</button>
+        <button class="cancel-btn" onclick="closeCreateHabitModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="showPage('today', this)">
+      <span class="icon">✓</span>Today
+    </button>
+    <button class="nav-btn" onclick="showPage('manage', this)">
+      <span class="icon">⚙️</span>Manage
+    </button>
+    <button class="nav-btn" onclick="showPage('calendar', this)">
+      <span class="icon">📅</span>Calendar
+    </button>
+    <button class="nav-btn" onclick="showPage('stats', this)">
+      <span class="icon">📊</span>Stats
+    </button>
+  </nav>
+
+</div>
+<script>
+  // ── DATA ──────────────────────────────────────────────────────
+  // habits  → array of objects: { id, name, done }
+  // history → object keyed by date string: { "2025-03-11": { done: 2, total: 3 } }
+  let habits  = [];
+  let history = {};
+
+  // Calendar view state
+  let calYear  = new Date().getFullYear();
+  let calMonth = new Date().getMonth();
+
+  // ── STARTUP ──────────────────────────────────────────────────
+  window.onload = function() {
+    loadFromStorage();
+    showDate();
+    renderHabits();
+    renderCalendar();
+    renderStats();
+  };
+
+  // ── HELPERS ───────────────────────────────────────────────────
+  function showDate() {
+    const today = new Date();
+    const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+    const dateStr = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    
+    document.getElementById('date-display').textContent = dayName;
+    document.getElementById('date-display-small').textContent = dateStr;
+  }
+
+  // Get today's day of the week (0=Sun, 1=Mon, ..., 6=Sat)
+  function getTodayDayOfWeek() {
+    return new Date().getDay();
+  }
+
+  // Returns today as "YYYY-MM-DD" — used as a key in history
+  function todayKey() {
+    const d = new Date();
+    // padStart makes sure we get "03" not "3"
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  // ── NAVIGATION ───────────────────────────────────────────────
+  function showPage(name, btn) {
+    // Hide all pages, show the right one
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+
+    // Highlight correct nav button
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Update header title
+    const titles = { today: 'My Habits', manage: 'Manage Habits', calendar: 'Calendar', stats: 'Stats' };
+    document.getElementById('page-title').textContent = titles[name];
+
+    // Refresh dynamic pages
+    if (name === 'calendar') renderCalendar();
+    if (name === 'stats')    renderStats();
+  }
+
+  // Manage habits for a specific day of week
+  let managedDayOfWeek = null;
+  function manageDayHabits(dayOfWeek) {
+    managedDayOfWeek = dayOfWeek;
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    // Update active button styling
+    document.querySelectorAll('.day-selector').forEach((btn, i) => {
+      if (i === dayOfWeek) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    const listEl = document.getElementById('managed-habits-list');
+    
+    // Show all habits and indicate which ones are scheduled for this day
+    let html = '';
+    
+    // Once/One-time habits
+    const onceHabits = habits.filter(h => h.frequency === 'once');
+    if (onceHabits.length > 0) {
+      html += '<div class="habits-section"><div class="habits-section-title daily">📌 One-Time Habits</div>';
+      onceHabits.forEach(habit => {
+        html += `
+          <div class="manage-habit-row">
+            <div class="manage-habit-info">
+              <span class="manage-habit-name">${habit.name}</span>
+              <span class="manage-habit-type\">One-time (today only)</span>
+            </div>
+            <div class="manage-habit-actions">
+              <button class="manage-edit-btn" onclick="openScheduleModal(${habit.id})">Edit</button>
+              <button class="manage-delete-btn" onclick="deleteHabit(${habit.id})">Delete</button>
+            </div>
+          </div>`;
+      });
+      html += '</div>';
+    }
+    
+    // Daily habits
+    const dailyHabits = habits.filter(h => h.frequency === 'daily');
+    if (dailyHabits.length > 0) {
+      html += '<div class="habits-section"><div class="habits-section-title daily">📌 Daily Habits</div>';
+      dailyHabits.forEach(habit => {
+        html += `
+          <div class="manage-habit-row">
+            <div class="manage-habit-info">
+              <span class="manage-habit-name">${habit.name}</span>
+              <span class="manage-habit-type">Daily (every day)</span>
+            </div>
+            <div class="manage-habit-actions">
+              <button class="manage-edit-btn" onclick="openScheduleModal(${habit.id})">Edit</button>
+              <button class="manage-delete-btn" onclick="deleteHabit(${habit.id})">Delete</button>
+            </div>
+          </div>`;
+      });
+      html += '</div>';
+    }
+    
+    // Scheduled habits
+    const scheduledHabits = habits.filter(h => h.frequency === 'specific');
+    if (scheduledHabits.length > 0) {
+      html += '<div class="habits-section"><div class="habits-section-title scheduled">📅 Weekly Habits</div>';
+      scheduledHabits.forEach(habit => {
+        const isScheduledForDay = habit.scheduledDays.includes(dayOfWeek);
+        const indicator = isScheduledForDay ? '✓ ' : '○ ';
+        html += `
+          <div class="manage-habit-row ${isScheduledForDay ? 'scheduled-active' : 'scheduled-inactive'}">
+            <div class="manage-habit-info">
+              <span class="manage-habit-status">${indicator}</span>
+              <span class="manage-habit-name">${habit.name}</span>
+              <span class="manage-habit-type">${isScheduledForDay ? 'Scheduled for ' + dayNames[dayOfWeek] : 'Not scheduled'}</span>
+            </div>
+            <div class="manage-habit-actions">
+              <button class="manage-edit-btn" onclick="openScheduleModal(${habit.id})">Edit</button>
+              <button class="manage-delete-btn" onclick="deleteHabit(${habit.id})">Delete</button>
+            </div>
+          </div>`;
+      });
+      html += '</div>';
+    }
+    
+    if (html === '') {
+      html = '<div class="empty-state">No habits yet. Add one in the Today tab!</div>';
+    }
+    
+    listEl.innerHTML = html;
+  }
+
+  function switchManageView(view) {
+    const allView = document.getElementById('manage-all-view');
+    const byDayView = document.getElementById('manage-by-day-view');
+    const allTab = document.querySelector('.manage-tab:nth-child(1)');
+    const byDayTab = document.querySelector('.manage-tab:nth-child(2)');
+
+    if (view === 'all') {
+      allView.classList.add('active');
+      byDayView.classList.remove('active');
+      allTab.classList.add('active');
+      byDayTab.classList.remove('active');
+      renderAllHabits();
+    } else {
+      allView.classList.remove('active');
+      byDayView.classList.add('active');
+      allTab.classList.remove('active');
+      byDayTab.classList.add('active');
+    }
+  }
+
+  function renderAllHabits() {
+    const listEl = document.getElementById('all-habits-list');
+    
+    if (habits.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">No habits yet. Create one in the Today tab!</div>';
+      return;
+    }
+
+    let html = '';
+
+    // One-time habits
+    const onceHabits = habits.filter(h => h.frequency === 'once');
+    if (onceHabits.length > 0) {
+      html += '<div class="habits-section"><div class="habits-section-title daily">📌 One-Time Habits</div>';
+      onceHabits.forEach(habit => {
+        html += `
+          <div class="manage-habit-row">
+            <div class="manage-habit-info">
+              <span class="manage-habit-name">${habit.name}</span>
+              <span class="manage-habit-type">One-time (today only)</span>
+            </div>
+            <div class="manage-habit-actions">
+              <button class="manage-edit-btn" onclick="openScheduleModal(${habit.id})">Edit</button>
+              <button class="manage-delete-btn" onclick="deleteHabit(${habit.id})">Delete</button>
+            </div>
+          </div>`;
+      });
+      html += '</div>';
+    }
+
+    // Daily habits
+    const dailyHabits = habits.filter(h => h.frequency === 'daily');
+    if (dailyHabits.length > 0) {
+      html += '<div class="habits-section"><div class="habits-section-title daily">📌 Daily Habits</div>';
+      dailyHabits.forEach(habit => {
+        html += `
+          <div class="manage-habit-row">
+            <div class="manage-habit-info">
+              <span class="manage-habit-name">${habit.name}</span>
+              <span class="manage-habit-type">Daily (every day)</span>
+            </div>
+            <div class="manage-habit-actions">
+              <button class="manage-edit-btn" onclick="openScheduleModal(${habit.id})">Edit</button>
+              <button class="manage-delete-btn" onclick="deleteHabit(${habit.id})">Delete</button>
+            </div>
+          </div>`;
+      });
+      html += '</div>';
+    }
+
+    // Scheduled habits (weekly/specific days)
+    const scheduledHabits = habits.filter(h => h.frequency === 'specific');
+    if (scheduledHabits.length > 0) {
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      html += '<div class="habits-section"><div class="habits-section-title scheduled">📅 Weekly Habits</div>';
+      scheduledHabits.forEach(habit => {
+        const dayLabels = habit.scheduledDays.map(d => dayNames[d]).join(', ');
+        html += `
+          <div class="manage-habit-row">
+            <div class="manage-habit-info">
+              <span class="manage-habit-name">${habit.name}</span>
+              <span class="manage-habit-type">${dayLabels}</span>
+            </div>
+            <div class="manage-habit-actions">
+              <button class="manage-edit-btn" onclick="openScheduleModal(${habit.id})">Edit</button>
+              <button class="manage-delete-btn" onclick="deleteHabit(${habit.id})">Delete</button>
+            </div>
+          </div>`;
+      });
+      html += '</div>';
+    }
+
+    listEl.innerHTML = html;
+  }
+
+  // ── HABIT CRUD ────────────────────────────────────────────────
+  // Habit creation now uses modal form via createHabitFromModal()
+  
+  function toggleHabit(id) {
+    // .find() returns the first item in the array that matches
+    const habit = habits.find(h => h.id === id);
+    habit.done = !habit.done;  // flip true → false or false → true
+    saveToStorage();
+    renderHabits();
+    renderCalendar();
+  }
+
+  function toggleCalendarDisplay(id) {
+    const habit = habits.find(h => h.id === id);
+    habit.showInCalendar = !habit.showInCalendar;
+    if (!habit.calendarColor) habit.calendarColor = '#3b82f6';
+    saveToStorage();
+    renderHabits();
+    renderCalendar();
+  }
+
+  function changeHabitColor(id, color) {
+    const habit = habits.find(h => h.id === id);
+    habit.calendarColor = color;
+    saveToStorage();
+    renderCalendar();
+  }
+
+  function deleteHabit(id) {
+    // .filter() keeps every item EXCEPT the one we want to remove
+    habits = habits.filter(h => h.id !== id);
+    saveToStorage();
+    renderHabits();
+  }
+
+  // ── SCHEDULE MANAGEMENT ───────────────────────────────────────
+  let currentScheduleId = null;
+
+  function openScheduleModal(id) {
+    currentScheduleId = id;
+    const habit = habits.find(h => h.id === id);
+    document.getElementById('schedule-modal-title').textContent = `${habit.name} - Schedule`;
+    
+    // Show days section for all habit types
+    const daysSection = document.getElementById('days-section');
+    daysSection.style.display = 'block';
+    updateDayButtons(habit.scheduledDays);
+    
+    document.getElementById('schedule-modal').classList.add('active');
+  }
+
+  function closeScheduleModal() {
+    document.getElementById('schedule-modal').classList.remove('active');
+    currentScheduleId = null;
+  }
+
+  function setFrequency(freq, event) {
+    // Days section is always shown, no need for frequency toggle
+  }
+
+  function updateDayButtons(selectedDays) {
+    const dayBtns = document.querySelectorAll('.day-btn');
+    dayBtns.forEach((btn, i) => {
+      if (selectedDays.includes(i)) {
+        btn.classList.add('selected');
+      } else {
+        btn.classList.remove('selected');
+      }
+    });
+  }
+
+  function toggleDay(day, event) {
+    event.preventDefault();
+    const habit = habits.find(h => h.id === currentScheduleId);
+    const index = habit.scheduledDays.indexOf(day);
+    if (index > -1) {
+      habit.scheduledDays.splice(index, 1);
+    } else {
+      habit.scheduledDays.push(day);
+    }
+    updateDayButtons(habit.scheduledDays);
+  }
+
+  function saveSchedule() {
+    const habit = habits.find(h => h.id === currentScheduleId);
+    
+    // If changing from 'once' to a schedule with selected days, update to 'specific'
+    if (habit.frequency === 'once' && habit.scheduledDays.length > 0) {
+      habit.frequency = 'specific';
+    }
+    
+    saveToStorage();
+    closeScheduleModal();
+    renderHabits();
+    renderCalendar();
+  }
+
+  function isHabitScheduledForDay(habit, dayOfWeek) {
+    if (habit.frequency === 'daily') {
+      return true;
+    }
+    return habit.scheduledDays.includes(dayOfWeek);
+  }
+
+  function isScheduleCustomized(habit) {
+    // One-time habits are never considered customized
+    if (habit.frequency === 'once') {
+      return false;
+    }
+    // Check if schedule is customized (not the default daily for all days)
+    if (habit.frequency === 'specific') {
+      return true;
+    }
+    // Also consider it customized if it's daily but not all days are selected
+    if (habit.frequency === 'daily' && habit.scheduledDays.length < 7) {
+      return true;
+    }
+    return false;
+  }
+
+  // ── CREATE HABIT MODAL ────────────────────────────────────────
+  let createHabitState = {
+    name: '',
+    frequency: 'once',
+    selectedDays: [],
+    color: '#3b82f6'
+  };
+
+  function openCreateHabitModal() {
+    // Reset form state
+    createHabitState = {
+      name: '',
+      frequency: 'once',
+      selectedDays: [],
+      color: '#3b82f6'
+    };
+
+    // Reset all form elements
+    document.getElementById('create-habit-name-input').value = '';
+    document.getElementById('create-habit-color-input').value = '#3b82f6';
+
+    // Reset frequency buttons
+    const freqBtns = document.querySelectorAll('#create-habit-modal .freq-btn');
+    freqBtns.forEach((btn, idx) => {
+      if (idx === 0) btn.classList.add('active');
+      else btn.classList.remove('active');
+    });
+
+    // Reset day buttons
+    const dayBtns = document.querySelectorAll('#create-habit-modal .day-btn');
+    dayBtns.forEach(btn => btn.classList.remove('selected'));
+
+    // Hide the days section for 'once' frequency
+    document.getElementById('create-days-section').style.display = 'none';
+
+    // Show modal
+    document.getElementById('create-habit-modal').classList.add('active');
+  }
+
+  function closeCreateHabitModal() {
+    document.getElementById('create-habit-modal').classList.remove('active');
+    createHabitState = {
+      name: '',
+      frequency: 'once',
+      selectedDays: [],
+      color: '#3b82f6'
+    };
+  }
+
+  function setCreateFrequency(freq, event) {
+    event.preventDefault();
+    createHabitState.frequency = freq;
+
+    // Update button styling
+    const freqBtns = document.querySelectorAll('#create-habit-modal .freq-btn');
+    freqBtns.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+
+    // Show/hide days section
+    const daysSection = document.getElementById('create-days-section');
+    if (freq === 'specific') {
+      daysSection.style.display = 'block';
+    } else {
+      daysSection.style.display = 'none';
+      createHabitState.selectedDays = [];
+      // Clear day button selections
+      const dayBtns = document.querySelectorAll('#create-habit-modal .day-btn');
+      dayBtns.forEach(btn => btn.classList.remove('selected'));
+    }
+  }
+
+  function toggleCreateDay(day, event) {
+    event.preventDefault();
+    const index = createHabitState.selectedDays.indexOf(day);
+    if (index > -1) {
+      createHabitState.selectedDays.splice(index, 1);
+      event.target.classList.remove('selected');
+    } else {
+      createHabitState.selectedDays.push(day);
+      event.target.classList.add('selected');
+    }
+  }
+
+  function updateCreateHabitColor(color) {
+    createHabitState.color = color;
+  }
+
+  function createHabitFromModal() {
+    const nameInput = document.getElementById('create-habit-name-input');
+    const name = nameInput.value.trim();
+
+    if (!name) {
+      alert('Please enter a habit name');
+      return;
+    }
+
+    // Determine scheduled days based on frequency
+    let scheduledDays = [0, 1, 2, 3, 4, 5, 6]; // Default: all days
+    if (createHabitState.frequency === 'specific') {
+      if (createHabitState.selectedDays.length === 0) {
+        alert('Please select at least one day for specific habits');
+        return;
+      }
+      scheduledDays = createHabitState.selectedDays.sort((a, b) => a - b);
+    }
+
+    // Create new habit
+    const newHabit = {
+      id: Date.now(),
+      name: name,
+      done: false,
+      showInCalendar: false,
+      calendarColor: createHabitState.color,
+      frequency: createHabitState.frequency,
+      scheduledDays: scheduledDays
+    };
+
+    habits.push(newHabit);
+    saveToStorage();
+    renderHabits();
+    renderCalendar();
+    closeCreateHabitModal();
+  }
+
+  // ── RENDER: TODAY ─────────────────────────────────────────────
+  function getHabitScheduleText(habit) {
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    if (habit.frequency === 'once') {
+      return 'Today only';
+    } else if (habit.frequency === 'daily') {
+      return 'Every day';
+    } else {
+      // Specific days - show "Every day" if all 7 days selected
+      if (habit.scheduledDays.length === 7) {
+        return 'Every day';
+      }
+      return habit.scheduledDays.map(d => dayNames[d]).join(', ');
+    }
+  }
+
+  function renderHabits() {
+    const list = document.getElementById('habit-list');
+
+    if (habits.length === 0) {
+      list.innerHTML = '<div class="empty-state">No habits yet. Add one above! ☝️</div>';
+      updateProgress(0, 0);
+      return;
+    }
+
+    const todayDayOfWeek = getTodayDayOfWeek();
+    const key = todayKey();
+    const doneHabitsForDay = localStorage.getItem(`day-${key}`);
+    const doneHabitsSet = doneHabitsForDay ? new Set(JSON.parse(doneHabitsForDay)) : new Set();
+
+    // Filter habits for today
+    // One-time habits show even if completed (they just appear checked off)
+    const onceHabits = habits.filter(h => h.frequency === 'once');
+    
+    // Daily habits always show
+    const dailyHabits = habits.filter(h => h.frequency === 'daily');
+    
+    // Scheduled habits only show if scheduled for today
+    const scheduledHabits = habits.filter(h => 
+      h.frequency === 'specific' && h.scheduledDays.includes(todayDayOfWeek)
+    );
+
+    // All habits visible today (Daily To Do)
+    const todayAllHabits = [...onceHabits, ...dailyHabits, ...scheduledHabits];
+    
+    // All habits that repeat (Daily To Do + Weekly To Do)
+    const recurringHabits = habits.filter(h => h.frequency === 'daily' || h.frequency === 'specific');
+
+    let html = '';
+
+    // Daily To Do section (all habits visible today)
+    if (todayAllHabits.length > 0) {
+      html += '<div class="habits-section"><div class="habits-section-title daily">📌 Daily To Do</div>';
+      todayAllHabits.forEach(function(habit) {
+        html += buildHabitHTML(habit, true);
+      });
+      html += '</div>';
+    }
+
+    // Weekly To Do section (all recurring habits)
+    if (recurringHabits.length > 0) {
+      html += '<div class="habits-section"><div class="habits-section-title scheduled">📅 Weekly To Do</div>';
+      recurringHabits.forEach(function(habit) {
+        html += buildHabitHTML(habit, true);
+      });
+      html += '</div>';
+    }
+
+    list.innerHTML = html;
+
+    const doneCount = habits.filter(h => h.done).length;
+    updateProgress(doneCount, habits.length);
+  }
+
+  function buildHabitHTML(habit, showSchedule = false) {
+    const scheduleText = showSchedule ? getHabitScheduleText(habit) : '';
+    return `
+      <div class="habit ${habit.done ? 'done' : ''} ${habit.showInCalendar ? 'show-in-cal' : ''}">
+        <div class="habit-left">
+          <button class="check-btn" onclick="toggleHabit(${habit.id})">
+            ${habit.done ? '✓' : ''}
+          </button>
+          <div class="habit-name-group">
+            <span class="habit-name">${habit.name}</span>
+            ${showSchedule ? `<span class="habit-schedule">${scheduleText}</span>` : ''}
+          </div>
+        </div>
+        <div class="habit-controls">
+          <button class="cal-toggle-btn" onclick="toggleCalendarDisplay(${habit.id})">
+            📅
+          </button>
+          <input type="color" class="habit-color-input" 
+            value="${habit.calendarColor}" 
+            onchange="changeHabitColor(${habit.id}, this.value)">
+          <button class="schedule-btn ${isScheduleCustomized(habit) ? 'customized' : ''}" onclick="openScheduleModal(${habit.id})">
+            ⏰
+          </button>
+          <button class="delete-btn" onclick="deleteHabit(${habit.id})">✕</button>
+        </div>
+      </div>`;
+  }
+
+  function updateProgress(done, total) {
+    const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = `${done} / ${total} done`;
+  }
+
+  // ── RENDER: CALENDAR ──────────────────────────────────────────
+  function renderCalendar() {
+    const grid  = document.getElementById('calendar-grid');
+    const label = document.getElementById('cal-month-label');
+
+    const monthNames = ['January','February','March','April','May','June',
+                        'July','August','September','October','November','December'];
+    label.textContent = `${monthNames[calMonth]} ${calYear}`;
+
+    const today      = new Date();
+    // getDay() on the 1st tells us what column to start on (0=Sun, 1=Mon...)
+    const firstDay   = new Date(calYear, calMonth, 1).getDay();
+    // Day 0 of next month = last day of current month
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+    let html = '';
+
+    // Blank cells before day 1
+    for (let i = 0; i < firstDay; i++) {
+      html += `<div class="cal-day empty-day"></div>`;
+    }
+
+    // One cell per day of the month
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const isToday = d === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear();
+
+      const dayData = history[key];
+      let cls = 'current-month';
+
+      // Get habits marked to show in calendar (exclude 'once' habits as they only exist today)
+      const calendarHabits = habits.filter(h => h.showInCalendar && h.frequency !== 'once');
+      
+      // Check status of tracked habits on this day
+      let dotsHtml = '';
+      if (calendarHabits.length > 0) {
+        const dayOfWeek = new Date(calYear, calMonth, d).getDay();
+        
+        // Get which habits were done on this day
+        const doneHabitsForDay = localStorage.getItem(`day-${key}`);
+        const doneHabitsSet = doneHabitsForDay ? new Set(JSON.parse(doneHabitsForDay)) : new Set();
+
+        calendarHabits.forEach(habit => {
+          // Only show dot if habit is scheduled for this day
+          if (isHabitScheduledForDay(habit, dayOfWeek)) {
+            const isDone = doneHabitsSet.has(habit.id);
+            const dotColor = isDone ? '#c8ff57' : habit.calendarColor;
+            dotsHtml += `<div class="cal-dot" style="background-color: ${dotColor}; border: 1px solid ${habit.calendarColor};"></div>`;
+          }
+        });
+      }
+
+      if (dayData && dayData.total > 0) {
+        if (dayData.done === dayData.total) {
+          cls += ' perfect';
+          if (isToday) cls += ' today';
+        }
+        else if (dayData.done > 0) cls += ' partial';
+      }
+
+      if (isToday && !cls.includes('perfect')) cls += ' today';
+
+      let dayContent = d;
+      if (dotsHtml) {
+        dayContent += `<div class="cal-dots-container">${dotsHtml}</div>`;
+      }
+
+      html += `<div class="cal-day ${cls}">${dayContent}</div>`;
+    }
+
+    grid.innerHTML = html;
+  }
+
+  function changeMonth(dir) {
+    calMonth += dir;
+    if (calMonth > 11) { calMonth = 0;  calYear++; }
+    if (calMonth < 0)  { calMonth = 11; calYear--; }
+    renderCalendar();
+  }
+
+  // ── RENDER: STATS ─────────────────────────────────────────────
+  function renderStats() {
+    const doneToday  = habits.filter(h => h.done).length;
+    const perfectDays = Object.values(history).filter(d => d.total > 0 && d.done === d.total).length;
+
+    // Streak: count consecutive perfect days backwards from today
+    let streak = 0;
+    const check = new Date();
+    for (let i = 0; i < 365; i++) {
+      const key = `${check.getFullYear()}-${String(check.getMonth()+1).padStart(2,'0')}-${String(check.getDate()).padStart(2,'0')}`;
+      const d = history[key];
+      if (d && d.total > 0 && d.done === d.total) {
+        streak++;
+        check.setDate(check.getDate() - 1);
+      } else break;
+    }
+
+    document.getElementById('stat-total').textContent   = habits.length;
+    document.getElementById('stat-done').textContent    = doneToday;
+    document.getElementById('stat-streak').textContent  = streak + ' 🔥';
+    document.getElementById('stat-perfect').textContent = perfectDays;
+
+    const listEl = document.getElementById('habit-stats-list');
+    if (habits.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">Add habits to see stats!</div>';
+      return;
+    }
+
+    let html = '';
+    habits.forEach(h => {
+      const pct = h.done ? 100 : 0;
+      html += `
+        <div class="habit-stat-row">
+          <div class="habit-stat-top">
+            <span class="habit-stat-name">${h.name}</span>
+            <span class="habit-stat-pct">${pct}%</span>
+          </div>
+          <div class="habit-mini-bar-bg">
+            <div class="habit-mini-bar-fill" style="width:${pct}%"></div>
+          </div>
+        </div>`;
+    });
+    listEl.innerHTML = html;
+  }
+
+  // ── STORAGE ───────────────────────────────────────────────────
+  // localStorage is like a mini database built into every browser
+  // It saves data as text, so we use JSON.stringify to convert objects to text
+  // and JSON.parse to convert back
+
+  function saveToStorage() {
+    // Save today's score to history before saving
+    const key = todayKey();
+    history[key] = {
+      done:  habits.filter(h => h.done).length,
+      total: habits.length
+    };
+    
+    // Track which specific habits were done today
+    const doneHabits = habits.filter(h => h.done).map(h => h.id);
+    localStorage.setItem(`day-${key}`, JSON.stringify(doneHabits));
+    
+    localStorage.setItem('habits',  JSON.stringify(habits));
+    localStorage.setItem('history', JSON.stringify(history));
+  }
+
+  function loadFromStorage() {
+    const h = localStorage.getItem('habits');
+    const r = localStorage.getItem('history');
+    if (h) {
+      habits = JSON.parse(h);
+      // Migrate old habits that don't have calendar/schedule properties
+      habits.forEach(habit => {
+        if (!habit.hasOwnProperty('showInCalendar')) habit.showInCalendar = false;
+        if (!habit.hasOwnProperty('calendarColor')) habit.calendarColor = '#3b82f6';
+        if (!habit.hasOwnProperty('frequency')) habit.frequency = 'daily';
+        if (!habit.hasOwnProperty('scheduledDays')) habit.scheduledDays = [0, 1, 2, 3, 4, 5, 6];
+      });
+    }
+    if (r) history = JSON.parse(r);
+  }
+</script>
+</body>
+</html>
