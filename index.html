@@ -752,15 +752,178 @@
       border-radius: 8px;
       cursor: pointer;
     }
+
+    /* ── AUTH PAGE ── */
+    .auth-page {
+      display: none;
+      flex: 1;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .auth-page.active { display: flex; }
+
+    .auth-container {
+      width: 100%;
+      max-width: 350px;
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 16px;
+      padding: 32px 24px;
+    }
+
+    .auth-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .auth-subtitle {
+      font-size: 13px;
+      color: #555;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .auth-form-group {
+      margin-bottom: 16px;
+    }
+
+    .auth-label {
+      display: block;
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .auth-input {
+      width: 100%;
+      background: #0f0f13;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      padding: 12px;
+      color: white;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      box-sizing: border-box;
+    }
+
+    .auth-input:focus { border-color: #c8ff57; }
+
+    .auth-button {
+      width: 100%;
+      background: #c8ff57;
+      color: #0f0f13;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .auth-button:hover { transform: scale(1.02); }
+
+    .auth-toggle {
+      text-align: center;
+      font-size: 12px;
+      color: #555;
+      margin-top: 16px;
+    }
+
+    .auth-toggle button {
+      background: none;
+      border: none;
+      color: #c8ff57;
+      cursor: pointer;
+      text-decoration: underline;
+      font-size: 12px;
+    }
+
+    .auth-error {
+      background: #ff5555;
+      color: white;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .logout-btn {
+      background: #555;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+
+    .logout-btn:hover { background: #777; }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .header-user {
+      font-size: 12px;
+      color: #555;
+    }
   </style>
 </head>
 <body>
-<div class="app">
+<!-- AUTH PAGE -->
+<div class="auth-page active" id="auth-page">
+  <div class="auth-container">
+    <h1 class="auth-title">Habit Tracker</h1>
+    <p class="auth-subtitle" id="auth-mode-text">Sign up to get started</p>
+    <div id="auth-error" class="auth-error" style="display: none;"></div>
+    
+    <div class="auth-form-group">
+      <label class="auth-label">Email</label>
+      <input type="email" id="auth-email" class="auth-input" placeholder="your@email.com" />
+    </div>
+    
+    <div class="auth-form-group">
+      <label class="auth-label">Password</label>
+      <input type="password" id="auth-password" class="auth-input" placeholder="••••••••" />
+    </div>
+    
+    <button class="auth-button" onclick="submitAuth()" id="auth-submit-btn">Sign Up</button>
+    
+    <div class="auth-toggle">
+      <span id="auth-toggle-text">Already have an account? </span>
+      <button onclick="toggleAuthMode()">Login</button>
+    </div>
+  </div>
+</div>
+
+<div class="app" id="app" style="display: none;">
 
   <div class="header">
-    <h1 id="page-title">My Habits</h1>
-    <p class="subtitle" id="date-display"></p>
-    <p class="subtitle-small" id="date-display-small"></p>
+    <div class="header-controls">
+      <div>
+        <h1 id="page-title">My Habits</h1>
+        <p class="subtitle" id="date-display"></p>
+        <p class="subtitle-small" id="date-display-small"></p>
+      </div>
+      <div>
+        <span class="header-user" id="logged-user"></span>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+    </div>
   </div>
 
   <!-- PAGE: TODAY -->
@@ -954,11 +1117,14 @@
 
 </div>
 <script>
+  // ── API CONFIGURATION ─────────────────────────────────────────
+  const API_BASE = 'http://localhost:3000/api';
+
   // ── DATA ──────────────────────────────────────────────────────
-  // habits  → array of objects: { id, name, done }
-  // history → object keyed by date string: { "2025-03-11": { done: 2, total: 3 } }
   let habits  = [];
   let history = {};
+  let currentUser = null;
+  let authMode = 'signup'; // 'signup' or 'login'
 
   // Calendar view state
   let calYear  = new Date().getFullYear();
@@ -966,12 +1132,244 @@
 
   // ── STARTUP ──────────────────────────────────────────────────
   window.onload = function() {
-    loadFromStorage();
-    showDate();
-    renderHabits();
-    renderCalendar();
-    renderStats();
+    checkAuth();
   };
+
+  // ── AUTHENTICATION ────────────────────────────────────────────
+  function checkAuth() {
+    const token = localStorage.getItem('token');
+    const userEmail = localStorage.getItem('userEmail');
+    
+    if (token && userEmail) {
+      currentUser = { token, email: userEmail };
+      showApp();
+      loadHabits();
+      showDate();
+    } else {
+      showAuthPage();
+    }
+  }
+
+  function toggleAuthMode() {
+    authMode = authMode === 'signup' ? 'login' : 'signup';
+    const modeText = document.getElementById('auth-mode-text');
+    const toggleText = document.getElementById('auth-toggle-text');
+    const submitBtn = document.getElementById('auth-submit-btn');
+    
+    if (authMode === 'signup') {
+      modeText.textContent = 'Sign up to get started';
+      toggleText.textContent = 'Already have an account? ';
+      submitBtn.textContent = 'Sign Up';
+    } else {
+      modeText.textContent = 'Welcome back';
+      toggleText.textContent = 'Don\'t have an account? ';
+      submitBtn.textContent = 'Login';
+    }
+  }
+
+  async function submitAuth() {
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value.trim();
+    const errorEl = document.getElementById('auth-error');
+
+    errorEl.style.display = 'none';
+
+    if (!email || !password) {
+      errorEl.textContent = 'Please enter email and password';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    try {
+      const endpoint = authMode === 'signup' ? '/auth/signup' : '/auth/login';
+      const response = await fetch(API_BASE + endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Authentication failed');
+      }
+
+      // Store token and user
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('userEmail', data.email);
+      currentUser = { token: data.token, email: data.email };
+
+      // Clear form
+      document.getElementById('auth-email').value = '';
+      document.getElementById('auth-password').value = '';
+
+      showApp();
+      loadHabits();
+      showDate();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.style.display = 'block';
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userEmail');
+    currentUser = null;
+    authMode = 'signup';
+    showAuthPage();
+    document.getElementById('auth-email').value = '';
+    document.getElementById('auth-password').value = '';
+  }
+
+  function showAuthPage() {
+    document.getElementById('auth-page').classList.add('active');
+    document.getElementById('app').style.display = 'none';
+  }
+
+  function showApp() {
+    document.getElementById('auth-page').classList.remove('active');
+    document.getElementById('app').style.display = 'flex';
+    document.getElementById('logged-user').textContent = `Logged in as ${currentUser.email}`;
+  }
+
+  // ── API HELPER FUNCTIONS ──────────────────────────────────────
+  async function apiFetch(endpoint, options = {}) {
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers
+    };
+
+    if (currentUser && currentUser.token) {
+      headers['Authorization'] = `Bearer ${currentUser.token}`;
+    }
+
+    const response = await fetch(API_BASE + endpoint, {
+      ...options,
+      headers
+    });
+
+    if (response.status === 401) {
+      logout();
+      throw new Error('Session expired. Please login again.');
+    }
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'API error');
+    }
+    return data;
+  }
+
+  // ── HABIT MANAGEMENT ──────────────────────────────────────────
+  async function loadHabits() {
+    try {
+      const data = await apiFetch('/habits');
+      habits = data;
+      renderHabits();
+      renderCalendar();
+      renderStats();
+    } catch (err) {
+      console.error('Error loading habits:', err);
+    }
+  }
+
+  async function createHabit(name, frequency, scheduledDays, color) {
+    try {
+      const result = await apiFetch('/habits', {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          frequency,
+          scheduledDays,
+          color,
+          showInCalendar: false
+        })
+      });
+
+      habits.push({
+        id: result.id,
+        user_id: currentUser.userId,
+        name: result.name,
+        color: result.color,
+        frequency: result.frequency,
+        scheduledDays: result.scheduledDays,
+        showInCalendar: false,
+        done: false
+      });
+
+      renderHabits();
+      renderCalendar();
+    } catch (err) {
+      console.error('Error creating habit:', err);
+      alert('Failed to create habit: ' + err.message);
+    }
+  }
+
+  async function updateHabit(id, updates) {
+    try {
+      await apiFetch(`/habits/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates)
+      });
+
+      const habit = habits.find(h => h.id === id);
+      if (habit) {
+        Object.assign(habit, updates);
+      }
+
+      renderHabits();
+      renderCalendar();
+      renderStats();
+    } catch (err) {
+      console.error('Error updating habit:', err);
+      alert('Failed to update habit: ' + err.message);
+    }
+  }
+
+  async function deleteHabit(id) {
+    try {
+      await apiFetch(`/habits/${id}`, {
+        method: 'DELETE'
+      });
+
+      habits = habits.filter(h => h.id !== id);
+      renderHabits();
+      renderCalendar();
+      renderStats();
+    } catch (err) {
+      console.error('Error deleting habit:', err);
+      alert('Failed to delete habit: ' + err.message);
+    }
+  }
+
+  // ── COMPLETION TRACKING ───────────────────────────────────────
+  async function toggleHabitCompletion(id, isCompleting) {
+    try {
+      const key = todayKey();
+      const endpoint = isCompleting ? '/completions/complete' : '/completions/uncomplete';
+      
+      await apiFetch(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({
+          habitId: id,
+          date: key
+        })
+      });
+
+      const habit = habits.find(h => h.id === id);
+      if (habit) {
+        habit.done = isCompleting;
+      }
+
+      renderHabits();
+      renderCalendar();
+      renderStats();
+    } catch (err) {
+      console.error('Error toggling completion:', err);
+      alert('Failed to update habit: ' + err.message);
+    }
+  }
 
   // ── HELPERS ───────────────────────────────────────────────────
   function showDate() {
@@ -983,33 +1381,26 @@
     document.getElementById('date-display-small').textContent = dateStr;
   }
 
-  // Get today's day of the week (0=Sun, 1=Mon, ..., 6=Sat)
   function getTodayDayOfWeek() {
     return new Date().getDay();
   }
 
-  // Returns today as "YYYY-MM-DD" — used as a key in history
   function todayKey() {
     const d = new Date();
-    // padStart makes sure we get "03" not "3"
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
   // ── NAVIGATION ───────────────────────────────────────────────
   function showPage(name, btn) {
-    // Hide all pages, show the right one
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById('page-' + name).classList.add('active');
 
-    // Highlight correct nav button
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 
-    // Update header title
     const titles = { today: 'My Habits', manage: 'Manage Habits', calendar: 'Calendar', stats: 'Stats' };
     document.getElementById('page-title').textContent = titles[name];
 
-    // Refresh dynamic pages
     if (name === 'calendar') renderCalendar();
     if (name === 'stats')    renderStats();
   }
@@ -1020,7 +1411,6 @@
     managedDayOfWeek = dayOfWeek;
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     
-    // Update active button styling
     document.querySelectorAll('.day-selector').forEach((btn, i) => {
       if (i === dayOfWeek) {
         btn.classList.add('active');
@@ -1029,9 +1419,8 @@
       }
     });
 
-    const listEl = document.getElementById('managed-habits-list');
+   const listEl = document.getElementById('managed-habits-list');
     
-    // Show all habits and indicate which ones are scheduled for this day
     let html = '';
     
     // Once/One-time habits
@@ -1043,7 +1432,7 @@
           <div class="manage-habit-row">
             <div class="manage-habit-info">
               <span class="manage-habit-name">${habit.name}</span>
-              <span class="manage-habit-type\">One-time (today only)</span>
+              <span class="manage-habit-type">One-time (today only)</span>
             </div>
             <div class="manage-habit-actions">
               <button class="manage-edit-btn" onclick="openScheduleModal(${habit.id})">Edit</button>
@@ -1079,7 +1468,7 @@
     if (scheduledHabits.length > 0) {
       html += '<div class="habits-section"><div class="habits-section-title scheduled">📅 Weekly Habits</div>';
       scheduledHabits.forEach(habit => {
-        const isScheduledForDay = habit.scheduledDays.includes(dayOfWeek);
+        const isScheduledForDay = habit.scheduledDays && habit.scheduledDays.includes(dayOfWeek);
         const indicator = isScheduledForDay ? '✓ ' : '○ ';
         html += `
           <div class="manage-habit-row ${isScheduledForDay ? 'scheduled-active' : 'scheduled-inactive'}">
@@ -1180,7 +1569,9 @@
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       html += '<div class="habits-section"><div class="habits-section-title scheduled">📅 Weekly Habits</div>';
       scheduledHabits.forEach(habit => {
-        const dayLabels = habit.scheduledDays.map(d => dayNames[d]).join(', ');
+        const dayLabels = habit.scheduledDays && habit.scheduledDays.length > 0 
+          ? habit.scheduledDays.map(d => dayNames[d]).join(', ')
+          : 'No days selected';
         html += `
           <div class="manage-habit-row">
             <div class="manage-habit-info">
@@ -1199,39 +1590,31 @@
     listEl.innerHTML = html;
   }
 
-  // ── HABIT CRUD ────────────────────────────────────────────────
-  // Habit creation now uses modal form via createHabitFromModal()
-  
+  // ── HABIT CRUD (UPDATE FUNCTIONS) ────────────────────────────
   function toggleHabit(id) {
-    // .find() returns the first item in the array that matches
     const habit = habits.find(h => h.id === id);
-    habit.done = !habit.done;  // flip true → false or false → true
-    saveToStorage();
-    renderHabits();
-    renderCalendar();
+    if (habit) {
+      const isCompleting = !habit.done;
+      toggleHabitCompletion(id, isCompleting);
+    }
   }
 
   function toggleCalendarDisplay(id) {
     const habit = habits.find(h => h.id === id);
-    habit.showInCalendar = !habit.showInCalendar;
-    if (!habit.calendarColor) habit.calendarColor = '#3b82f6';
-    saveToStorage();
-    renderHabits();
-    renderCalendar();
+    if (habit) {
+      updateHabit(id, {
+        showInCalendar: !habit.showInCalendar
+      });
+    }
   }
 
   function changeHabitColor(id, color) {
     const habit = habits.find(h => h.id === id);
-    habit.calendarColor = color;
-    saveToStorage();
-    renderCalendar();
-  }
-
-  function deleteHabit(id) {
-    // .filter() keeps every item EXCEPT the one we want to remove
-    habits = habits.filter(h => h.id !== id);
-    saveToStorage();
-    renderHabits();
+    if (habit) {
+      habit.color = color;
+      updateHabit(id, { color });
+      renderCalendar();
+    }
   }
 
   // ── SCHEDULE MANAGEMENT ───────────────────────────────────────
@@ -1242,10 +1625,9 @@
     const habit = habits.find(h => h.id === id);
     document.getElementById('schedule-modal-title').textContent = `${habit.name} - Schedule`;
     
-    // Show days section for all habit types
     const daysSection = document.getElementById('days-section');
     daysSection.style.display = 'block';
-    updateDayButtons(habit.scheduledDays);
+    updateDayButtons(habit.scheduledDays || []);
     
     document.getElementById('schedule-modal').classList.add('active');
   }
@@ -1262,7 +1644,7 @@
   function updateDayButtons(selectedDays) {
     const dayBtns = document.querySelectorAll('.day-btn');
     dayBtns.forEach((btn, i) => {
-      if (selectedDays.includes(i)) {
+      if (selectedDays && selectedDays.includes(i)) {
         btn.classList.add('selected');
       } else {
         btn.classList.remove('selected');
@@ -1273,6 +1655,7 @@
   function toggleDay(day, event) {
     event.preventDefault();
     const habit = habits.find(h => h.id === currentScheduleId);
+    if (!habit.scheduledDays) habit.scheduledDays = [];
     const index = habit.scheduledDays.indexOf(day);
     if (index > -1) {
       habit.scheduledDays.splice(index, 1);
@@ -1285,35 +1668,33 @@
   function saveSchedule() {
     const habit = habits.find(h => h.id === currentScheduleId);
     
-    // If changing from 'once' to a schedule with selected days, update to 'specific'
-    if (habit.frequency === 'once' && habit.scheduledDays.length > 0) {
+    if (habit.frequency === 'once' && habit.scheduledDays && habit.scheduledDays.length > 0) {
       habit.frequency = 'specific';
     }
     
-    saveToStorage();
+    updateHabit(currentScheduleId, {
+      frequency: habit.frequency,
+      scheduledDays: habit.scheduledDays || []
+    });
+    
     closeScheduleModal();
-    renderHabits();
-    renderCalendar();
   }
 
   function isHabitScheduledForDay(habit, dayOfWeek) {
     if (habit.frequency === 'daily') {
       return true;
     }
-    return habit.scheduledDays.includes(dayOfWeek);
+    return habit.scheduledDays && habit.scheduledDays.includes(dayOfWeek);
   }
 
   function isScheduleCustomized(habit) {
-    // One-time habits are never considered customized
     if (habit.frequency === 'once') {
       return false;
     }
-    // Check if schedule is customized (not the default daily for all days)
     if (habit.frequency === 'specific') {
       return true;
     }
-    // Also consider it customized if it's daily but not all days are selected
-    if (habit.frequency === 'daily' && habit.scheduledDays.length < 7) {
+    if (habit.frequency === 'daily' && habit.scheduledDays && habit.scheduledDays.length < 7) {
       return true;
     }
     return false;
@@ -1328,7 +1709,6 @@
   };
 
   function openCreateHabitModal() {
-    // Reset form state
     createHabitState = {
       name: '',
       frequency: 'once',
@@ -1336,25 +1716,19 @@
       color: '#3b82f6'
     };
 
-    // Reset all form elements
     document.getElementById('create-habit-name-input').value = '';
     document.getElementById('create-habit-color-input').value = '#3b82f6';
 
-    // Reset frequency buttons
     const freqBtns = document.querySelectorAll('#create-habit-modal .freq-btn');
     freqBtns.forEach((btn, idx) => {
       if (idx === 0) btn.classList.add('active');
       else btn.classList.remove('active');
     });
 
-    // Reset day buttons
     const dayBtns = document.querySelectorAll('#create-habit-modal .day-btn');
     dayBtns.forEach(btn => btn.classList.remove('selected'));
 
-    // Hide the days section for 'once' frequency
     document.getElementById('create-days-section').style.display = 'none';
-
-    // Show modal
     document.getElementById('create-habit-modal').classList.add('active');
   }
 
@@ -1372,19 +1746,16 @@
     event.preventDefault();
     createHabitState.frequency = freq;
 
-    // Update button styling
     const freqBtns = document.querySelectorAll('#create-habit-modal .freq-btn');
     freqBtns.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
 
-    // Show/hide days section
     const daysSection = document.getElementById('create-days-section');
     if (freq === 'specific') {
       daysSection.style.display = 'block';
     } else {
       daysSection.style.display = 'none';
       createHabitState.selectedDays = [];
-      // Clear day button selections
       const dayBtns = document.querySelectorAll('#create-habit-modal .day-btn');
       dayBtns.forEach(btn => btn.classList.remove('selected'));
     }
@@ -1415,8 +1786,7 @@
       return;
     }
 
-    // Determine scheduled days based on frequency
-    let scheduledDays = [0, 1, 2, 3, 4, 5, 6]; // Default: all days
+    let scheduledDays = [];
     if (createHabitState.frequency === 'specific') {
       if (createHabitState.selectedDays.length === 0) {
         alert('Please select at least one day for specific habits');
@@ -1425,21 +1795,13 @@
       scheduledDays = createHabitState.selectedDays.sort((a, b) => a - b);
     }
 
-    // Create new habit
-    const newHabit = {
-      id: Date.now(),
-      name: name,
-      done: false,
-      showInCalendar: false,
-      calendarColor: createHabitState.color,
-      frequency: createHabitState.frequency,
-      scheduledDays: scheduledDays
-    };
+    createHabit(
+      name,
+      createHabitState.frequency,
+      scheduledDays,
+      createHabitState.color
+    );
 
-    habits.push(newHabit);
-    saveToStorage();
-    renderHabits();
-    renderCalendar();
     closeCreateHabitModal();
   }
 
@@ -1451,11 +1813,12 @@
     } else if (habit.frequency === 'daily') {
       return 'Every day';
     } else {
-      // Specific days - show "Every day" if all 7 days selected
-      if (habit.scheduledDays.length === 7) {
+      if (habit.scheduledDays && habit.scheduledDays.length === 7) {
         return 'Every day';
       }
-      return habit.scheduledDays.map(d => dayNames[d]).join(', ');
+      return habit.scheduledDays && habit.scheduledDays.length > 0
+        ? habit.scheduledDays.map(d => dayNames[d]).join(', ')
+        : 'Not scheduled';
     }
   }
 
@@ -1469,43 +1832,29 @@
     }
 
     const todayDayOfWeek = getTodayDayOfWeek();
-    const key = todayKey();
-    const doneHabitsForDay = localStorage.getItem(`day-${key}`);
-    const doneHabitsSet = doneHabitsForDay ? new Set(JSON.parse(doneHabitsForDay)) : new Set();
 
-    // Filter habits for today
-    // One-time habits show even if completed (they just appear checked off)
     const onceHabits = habits.filter(h => h.frequency === 'once');
-    
-    // Daily habits always show
     const dailyHabits = habits.filter(h => h.frequency === 'daily');
-    
-    // Scheduled habits only show if scheduled for today
     const scheduledHabits = habits.filter(h => 
-      h.frequency === 'specific' && h.scheduledDays.includes(todayDayOfWeek)
+      h.frequency === 'specific' && h.scheduledDays && h.scheduledDays.includes(todayDayOfWeek)
     );
 
-    // All habits visible today (Daily To Do)
     const todayAllHabits = [...onceHabits, ...dailyHabits, ...scheduledHabits];
-    
-    // All habits that repeat (Daily To Do + Weekly To Do)
     const recurringHabits = habits.filter(h => h.frequency === 'daily' || h.frequency === 'specific');
 
     let html = '';
 
-    // Daily To Do section (all habits visible today)
     if (todayAllHabits.length > 0) {
       html += '<div class="habits-section"><div class="habits-section-title daily">📌 Daily To Do</div>';
-      todayAllHabits.forEach(function(habit) {
+      todayAllHabits.forEach(habit => {
         html += buildHabitHTML(habit, true);
       });
       html += '</div>';
     }
 
-    // Weekly To Do section (all recurring habits)
     if (recurringHabits.length > 0) {
       html += '<div class="habits-section"><div class="habits-section-title scheduled">📅 Weekly To Do</div>';
-      recurringHabits.forEach(function(habit) {
+      recurringHabits.forEach(habit => {
         html += buildHabitHTML(habit, true);
       });
       html += '</div>';
@@ -1535,7 +1884,7 @@
             📅
           </button>
           <input type="color" class="habit-color-input" 
-            value="${habit.calendarColor}" 
+            value="${habit.color || '#3b82f6'}" 
             onchange="changeHabitColor(${habit.id}, this.value)">
           <button class="schedule-btn ${isScheduleCustomized(habit) ? 'customized' : ''}" onclick="openScheduleModal(${habit.id})">
             ⏰
@@ -1561,54 +1910,34 @@
     label.textContent = `${monthNames[calMonth]} ${calYear}`;
 
     const today      = new Date();
-    // getDay() on the 1st tells us what column to start on (0=Sun, 1=Mon...)
     const firstDay   = new Date(calYear, calMonth, 1).getDay();
-    // Day 0 of next month = last day of current month
     const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
 
     let html = '';
 
-    // Blank cells before day 1
     for (let i = 0; i < firstDay; i++) {
       html += `<div class="cal-day empty-day"></div>`;
     }
 
-    // One cell per day of the month
     for (let d = 1; d <= daysInMonth; d++) {
       const key = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const isToday = d === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear();
 
-      const dayData = history[key];
       let cls = 'current-month';
 
-      // Get habits marked to show in calendar (exclude 'once' habits as they only exist today)
       const calendarHabits = habits.filter(h => h.showInCalendar && h.frequency !== 'once');
       
-      // Check status of tracked habits on this day
       let dotsHtml = '';
       if (calendarHabits.length > 0) {
         const dayOfWeek = new Date(calYear, calMonth, d).getDay();
         
-        // Get which habits were done on this day
-        const doneHabitsForDay = localStorage.getItem(`day-${key}`);
-        const doneHabitsSet = doneHabitsForDay ? new Set(JSON.parse(doneHabitsForDay)) : new Set();
-
         calendarHabits.forEach(habit => {
-          // Only show dot if habit is scheduled for this day
           if (isHabitScheduledForDay(habit, dayOfWeek)) {
-            const isDone = doneHabitsSet.has(habit.id);
-            const dotColor = isDone ? '#c8ff57' : habit.calendarColor;
-            dotsHtml += `<div class="cal-dot" style="background-color: ${dotColor}; border: 1px solid ${habit.calendarColor};"></div>`;
+            const isDone = habit.done; // Simplified: just check if done
+            const dotColor = isDone ? '#c8ff57' : (habit.color || '#3b82f6');
+            dotsHtml += `<div class="cal-dot" style="background-color: ${dotColor}; border: 1px solid ${habit.color || '#3b82f6'};"></div>`;
           }
         });
-      }
-
-      if (dayData && dayData.total > 0) {
-        if (dayData.done === dayData.total) {
-          cls += ' perfect';
-          if (isToday) cls += ' today';
-        }
-        else if (dayData.done > 0) cls += ' partial';
       }
 
       if (isToday && !cls.includes('perfect')) cls += ' today';
@@ -1634,24 +1963,11 @@
   // ── RENDER: STATS ─────────────────────────────────────────────
   function renderStats() {
     const doneToday  = habits.filter(h => h.done).length;
-    const perfectDays = Object.values(history).filter(d => d.total > 0 && d.done === d.total).length;
-
-    // Streak: count consecutive perfect days backwards from today
-    let streak = 0;
-    const check = new Date();
-    for (let i = 0; i < 365; i++) {
-      const key = `${check.getFullYear()}-${String(check.getMonth()+1).padStart(2,'0')}-${String(check.getDate()).padStart(2,'0')}`;
-      const d = history[key];
-      if (d && d.total > 0 && d.done === d.total) {
-        streak++;
-        check.setDate(check.getDate() - 1);
-      } else break;
-    }
 
     document.getElementById('stat-total').textContent   = habits.length;
     document.getElementById('stat-done').textContent    = doneToday;
-    document.getElementById('stat-streak').textContent  = streak + ' 🔥';
-    document.getElementById('stat-perfect').textContent = perfectDays;
+    document.getElementById('stat-streak').textContent  = '0 🔥';
+    document.getElementById('stat-perfect').textContent = '0';
 
     const listEl = document.getElementById('habit-stats-list');
     if (habits.length === 0) {
@@ -1674,43 +1990,6 @@
         </div>`;
     });
     listEl.innerHTML = html;
-  }
-
-  // ── STORAGE ───────────────────────────────────────────────────
-  // localStorage is like a mini database built into every browser
-  // It saves data as text, so we use JSON.stringify to convert objects to text
-  // and JSON.parse to convert back
-
-  function saveToStorage() {
-    // Save today's score to history before saving
-    const key = todayKey();
-    history[key] = {
-      done:  habits.filter(h => h.done).length,
-      total: habits.length
-    };
-    
-    // Track which specific habits were done today
-    const doneHabits = habits.filter(h => h.done).map(h => h.id);
-    localStorage.setItem(`day-${key}`, JSON.stringify(doneHabits));
-    
-    localStorage.setItem('habits',  JSON.stringify(habits));
-    localStorage.setItem('history', JSON.stringify(history));
-  }
-
-  function loadFromStorage() {
-    const h = localStorage.getItem('habits');
-    const r = localStorage.getItem('history');
-    if (h) {
-      habits = JSON.parse(h);
-      // Migrate old habits that don't have calendar/schedule properties
-      habits.forEach(habit => {
-        if (!habit.hasOwnProperty('showInCalendar')) habit.showInCalendar = false;
-        if (!habit.hasOwnProperty('calendarColor')) habit.calendarColor = '#3b82f6';
-        if (!habit.hasOwnProperty('frequency')) habit.frequency = 'daily';
-        if (!habit.hasOwnProperty('scheduledDays')) habit.scheduledDays = [0, 1, 2, 3, 4, 5, 6];
-      });
-    }
-    if (r) history = JSON.parse(r);
   }
 </script>
 </body>
